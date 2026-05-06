@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101827" />
+    <title>离线网页钱包（无冲突单页版）</title>
+    <style>
+:root {
+  color-scheme: dark;
+  --bg: #07111f;
+  --card: #101827;
+  --card-2: #142033;
+  --text: #eef5ff;
+  --muted: #9fb0c7;
+  --accent: #5eead4;
+  --accent-2: #38bdf8;
+  --danger: #fb7185;
+  --border: rgba(255, 255, 255, 0.1);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 36%), var(--bg);
+  color: var(--text);
+}
+
+.shell {
+  width: min(1160px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 56px;
+}
+
+.card {
+  background: linear-gradient(145deg, rgba(20, 32, 51, 0.96), rgba(16, 24, 39, 0.96));
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.22);
+  padding: 24px;
+}
+
+.hero, .toolbar {
+  align-items: center;
+  display: flex;
+  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+
+h1, h2, h3, p { margin-top: 0; }
+h1 { font-size: clamp(2rem, 5vw, 4rem); margin-bottom: 12px; }
+h2, h3 { margin-bottom: 16px; }
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.muted, .hint { color: var(--muted); line-height: 1.7; }
+.hint { font-size: 0.92rem; margin-bottom: 0; }
+
+.grid { display: grid; gap: 20px; }
+.two-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.three-cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.compact { gap: 14px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+label { color: var(--muted); display: flex; flex-direction: column; font-weight: 700; gap: 8px; }
+
+input, textarea, select {
+  background: rgba(7, 17, 31, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--text);
+  font: inherit;
+  padding: 12px 14px;
+  width: 100%;
+}
+
+textarea { resize: vertical; }
+input:focus, textarea:focus, select:focus { border-color: var(--accent); outline: 2px solid rgba(94, 234, 212, 0.16); }
+
+button {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: 0;
+  border-radius: 14px;
+  color: #06121f;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+  padding: 13px 18px;
+}
+
+button:hover { filter: brightness(1.08); }
+button:disabled { cursor: wait; opacity: 0.7; }
+button.secondary { background: var(--card-2); border: 1px solid var(--border); color: var(--text); }
+button.danger { background: rgba(251, 113, 133, 0.14); border: 1px solid rgba(251, 113, 133, 0.5); color: #fecdd3; }
+button.mini { border-radius: 10px; font-size: 0.82rem; padding: 8px 10px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-end; }
+.status {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  flex: 0 0 auto;
+  padding: 10px 14px;
+}
+.status.offline { border-color: rgba(94, 234, 212, 0.45); color: var(--accent); }
+.status.online { border-color: rgba(251, 113, 133, 0.45); color: #fecdd3; }
+
+.divider { border-top: 1px solid var(--border); }
+.file-label input { padding: 10px; }
+.hidden { display: none !important; }
+
+.stat span { color: var(--muted); display: block; margin-bottom: 8px; }
+.stat strong { font-size: 2.4rem; }
+
+.list { display: flex; flex-direction: column; gap: 12px; }
+.list.empty { color: var(--muted); }
+.item {
+  background: rgba(7, 17, 31, 0.58);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px;
+}
+.item header { align-items: baseline; display: flex; gap: 10px; justify-content: space-between; }
+.item strong { word-break: break-word; }
+.item small, .item p { color: var(--muted); line-height: 1.6; margin: 6px 0 0; word-break: break-word; }
+
+.security-panel { margin-bottom: 22px; }
+
+.table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: auto;
+}
+.table-wrap.empty {
+  color: var(--muted);
+  padding: 16px;
+}
+table { border-collapse: collapse; min-width: 1120px; width: 100%; }
+th, td { border-bottom: 1px solid var(--border); padding: 12px; text-align: left; vertical-align: top; }
+th { color: var(--accent); font-size: 0.82rem; letter-spacing: 0.06em; text-transform: uppercase; }
+td code {
+  color: #dbeafe;
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  max-width: 260px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.row-actions { min-width: 116px; }
+.row-actions button { margin: 0 6px 6px 0; }
+.code-block {
+  background: rgba(7, 17, 31, 0.82);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: #dbeafe;
+  margin: 0;
+  overflow: auto;
+  padding: 16px;
+  white-space: pre-wrap;
+}
+
+.toast {
+  background: #ecfeff;
+  border-radius: 14px;
+  bottom: 18px;
+  color: #083344;
+  font-weight: 800;
+  left: 50%;
+  margin: 0;
+  padding: 12px 16px;
+  position: fixed;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 760px) {
+  .hero, .toolbar { align-items: stretch; flex-direction: column; }
+  .two-cols, .three-cols { grid-template-columns: 1fr; }
+  .actions { justify-content: stretch; }
+  .actions button { width: 100%; }
+}
+
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero card">
+        <div>
+          <p class="eyebrow">100% 本地运行 · 无外部依赖</p>
+          <h1>离线网页钱包</h1>
+          <p class="muted">
+            使用浏览器 Web Crypto 对钱包数据加密，适合在断网设备上记录资产、地址和交易备忘。
+          </p>
+        </div>
+        <div class="status" id="networkStatus" aria-live="polite">检测网络中…</div>
+      </section>
+
+      <section id="lockedPanel" class="grid two-cols">
+        <form id="createForm" class="card stack">
+          <h2>创建新钱包</h2>
+          <label>
+            钱包名称
+            <input id="walletName" type="text" maxlength="40" placeholder="例如：冷钱包备份" autocomplete="off" />
+          </label>
+          <label>
+            主密码
+            <input id="newPassword" type="password" minlength="10" autocomplete="new-password" required />
+          </label>
+          <label>
+            确认主密码
+            <input id="confirmPassword" type="password" minlength="10" autocomplete="new-password" required />
+          </label>
+          <button type="submit">创建并解锁</button>
+          <p class="hint">主密码无法找回。建议在断网环境中创建，并保存加密备份。</p>
+        </form>
+
+        <form id="unlockForm" class="card stack">
+          <h2>解锁本机钱包</h2>
+          <label>
+            主密码
+            <input id="unlockPassword" type="password" autocomplete="current-password" required />
+          </label>
+          <button type="submit">解锁</button>
+          <div class="divider"></div>
+          <label class="file-label">
+            导入加密备份
+            <input id="importFile" type="file" accept="application/json" />
+          </label>
+          <p class="hint">备份文件仍需原主密码解锁，导入会覆盖当前浏览器保存的钱包。</p>
+        </form>
+      </section>
+
+      <section id="mnemonicTools" class="card stack security-panel">
+        <div>
+          <p class="eyebrow">离线派生工具</p>
+          <h2>输入助记词生成地址与密钥</h2>
+          <p class="hint">仅在完全断网、可信设备上输入助记词。默认生成比特币，每次只显示所选一种货币 / 网络的 36 个地址。</p>
+        </div>
+        <form id="deriveForm" class="stack">
+          <label>英文 BIP39 助记词
+            <textarea id="mnemonicInput" rows="3" autocomplete="off" spellcheck="false" placeholder="abandon abandon ..."></textarea>
+          </label>
+          <div class="grid three-cols compact">
+            <label>货币 / 网络
+              <select id="networkSelect"></select>
+            </label>
+            <label>可选密码短语 Passphrase
+              <input id="mnemonicPassphrase" type="password" autocomplete="off" placeholder="留空表示无 passphrase" />
+            </label>
+            <label>起始序号
+              <input id="accountIndex" type="number" min="0" max="1000000" value="0" />
+            </label>
+          </div>
+          <button type="submit">生成所选货币的 36 个地址 / 密钥</button>
+        </form>
+        <div id="deriveResults" class="table-wrap empty">尚未生成。默认选择 Bitcoin；请从下拉框选择其他货币 / 网络。</div>
+      </section>
+
+      <section id="signTools" class="card stack security-panel">
+        <div>
+          <p class="eyebrow">离线签名</p>
+          <h2>消息签名</h2>
+          <p class="hint">支持 EVM personal_sign 和 Bitcoin 风格消息摘要签名；不会广播交易。</p>
+        </div>
+        <form id="signForm" class="stack">
+          <div class="grid three-cols compact">
+            <label>签名类型
+              <select id="signMode">
+                <option value="evm">EVM personal_sign</option>
+                <option value="btc">Bitcoin-style message</option>
+              </select>
+            </label>
+            <label>私钥 Hex
+              <input id="signPrivateKey" type="password" autocomplete="off" spellcheck="false" placeholder="64 位 hex 私钥" />
+            </label>
+            <label>操作
+              <button type="submit">生成签名</button>
+            </label>
+          </div>
+          <label>待签名消息
+            <textarea id="signMessage" rows="3" spellcheck="false" placeholder="输入要离线签名的文本"></textarea>
+          </label>
+        </form>
+        <pre id="signatureOutput" class="code-block hidden"></pre>
+      </section>
+
+      <section id="walletPanel" class="hidden stack">
+        <div class="toolbar card">
+          <div>
+            <p class="eyebrow">已解锁</p>
+            <h2 id="walletTitle">钱包</h2>
+          </div>
+          <div class="actions">
+            <button id="exportBtn" type="button" class="secondary">导出加密备份</button>
+            <button id="lockBtn" type="button" class="danger">锁定</button>
+          </div>
+        </div>
+
+        <section class="grid three-cols">
+          <article class="card stat">
+            <span>资产种类</span>
+            <strong id="assetCount">0</strong>
+          </article>
+          <article class="card stat">
+            <span>账户 / 地址</span>
+            <strong id="accountCount">0</strong>
+          </article>
+          <article class="card stat">
+            <span>交易备忘</span>
+            <strong id="txCount">0</strong>
+          </article>
+        </section>
+
+        <section class="grid two-cols">
+          <form id="assetForm" class="card stack">
+            <h3>添加资产</h3>
+            <label>资产名称 <input id="assetName" type="text" placeholder="Bitcoin" required /></label>
+            <label>代码 <input id="assetSymbol" type="text" placeholder="BTC" maxlength="12" required /></label>
+            <label>备注 <textarea id="assetNote" rows="3" placeholder="网络、用途或风险提示"></textarea></label>
+            <button type="submit">保存资产</button>
+          </form>
+
+          <form id="accountForm" class="card stack">
+            <h3>添加账户 / 地址</h3>
+            <label>资产 <select id="accountAsset" required></select></label>
+            <label>标签 <input id="accountLabel" type="text" placeholder="硬件钱包地址 1" required /></label>
+            <label>地址 / 公钥 / 账号 <textarea id="accountAddress" rows="3" required></textarea></label>
+            <button type="submit">保存账户</button>
+          </form>
+        </section>
+
+        <form id="txForm" class="card stack">
+          <h3>添加交易备忘</h3>
+          <div class="grid three-cols compact">
+            <label>资产 <select id="txAsset" required></select></label>
+            <label>金额 <input id="txAmount" type="number" step="any" placeholder="0.00" required /></label>
+            <label>方向
+              <select id="txDirection">
+                <option value="收入">收入</option>
+                <option value="支出">支出</option>
+                <option value="转账">转账</option>
+              </select>
+            </label>
+          </div>
+          <label>说明 / 交易哈希 <textarea id="txMemo" rows="3" placeholder="离线记录用途、对方、链上 txid 等"></textarea></label>
+          <button type="submit">保存交易备忘</button>
+        </form>
+
+        <section class="grid two-cols">
+          <article class="card">
+            <h3>资产</h3>
+            <div id="assetList" class="list empty">暂无资产</div>
+          </article>
+          <article class="card">
+            <h3>账户 / 地址</h3>
+            <div id="accountList" class="list empty">暂无账户</div>
+          </article>
+        </section>
+
+        <article class="card">
+          <h3>交易备忘</h3>
+          <div id="txList" class="list empty">暂无交易备忘</div>
+        </article>
+      </section>
+
+      <p id="toast" class="toast hidden" role="status" aria-live="polite"></p>
+    </main>
+
+    <script src="wallet-core.js"></script>
+    <script>
+const STORAGE_KEY = "offline-web-wallet-v1";
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+let wallet = null;
+let encryptedVault = null;
+let saveTimer = null;
+
+const $ = (id) => document.getElementById(id);
+
+const elements = {
+  lockedPanel: $("lockedPanel"),
+  walletPanel: $("walletPanel"),
+  createForm: $("createForm"),
+  unlockForm: $("unlockForm"),
+  assetForm: $("assetForm"),
+  accountForm: $("accountForm"),
+  txForm: $("txForm"),
+  importFile: $("importFile"),
+  exportBtn: $("exportBtn"),
+  lockBtn: $("lockBtn"),
+  toast: $("toast"),
+  networkStatus: $("networkStatus"),
+  deriveForm: $("deriveForm"),
+  deriveResults: $("deriveResults"),
+  signForm: $("signForm"),
+  signatureOutput: $("signatureOutput"),
+  networkSelect: $("networkSelect"),
+};
+
+function toBase64(bytes) {
+  return btoa(String.fromCharCode(...new Uint8Array(bytes)));
+}
+
+function fromBase64(value) {
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+function newWallet(name) {
+  return {
+    version: 1,
+    name: name || "离线钱包",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    assets: [],
+    accounts: [],
+    transactions: [],
+  };
+}
+
+async function deriveKey(password, salt) {
+  const material = await crypto.subtle.importKey("raw", textEncoder.encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 310000, hash: "SHA-256" },
+    material,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
+}
+
+async function encryptWallet(data, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(password, salt);
+  const payload = textEncoder.encode(JSON.stringify(data));
+  const cipherText = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, payload);
+
+  return {
+    app: "offline-web-wallet",
+    version: 1,
+    kdf: "PBKDF2-SHA256",
+    iterations: 310000,
+    cipher: "AES-256-GCM",
+    salt: toBase64(salt),
+    iv: toBase64(iv),
+    data: toBase64(cipherText),
+    exportedAt: new Date().toISOString(),
+  };
+}
+
+async function decryptWallet(vault, password) {
+  if (!vault?.salt || !vault?.iv || !vault?.data) {
+    throw new Error("备份文件格式无效");
+  }
+
+  const key = await deriveKey(password, fromBase64(vault.salt));
+  const plainText = await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromBase64(vault.iv) }, key, fromBase64(vault.data));
+  return JSON.parse(textDecoder.decode(plainText));
+}
+
+function persistVault(vault) {
+  encryptedVault = vault;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(vault));
+}
+
+async function saveWallet() {
+  if (!wallet?.password) return;
+  wallet.updatedAt = new Date().toISOString();
+  const { password, ...safeWallet } = wallet;
+  persistVault(await encryptWallet(safeWallet, password));
+}
+
+function queueSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveWallet().catch((error) => notify(error.message)), 250);
+}
+
+function notify(message) {
+  elements.toast.textContent = message;
+  elements.toast.classList.remove("hidden");
+  clearTimeout(elements.toast.timer);
+  elements.toast.timer = setTimeout(() => elements.toast.classList.add("hidden"), 2800);
+}
+
+function updateNetworkStatus() {
+  const online = navigator.onLine;
+  elements.networkStatus.textContent = online ? "当前在线：建议断网后使用" : "当前离线：适合冷钱包操作";
+  elements.networkStatus.className = `status ${online ? "online" : "offline"}`;
+}
+
+function showWallet() {
+  elements.lockedPanel.classList.add("hidden");
+  elements.walletPanel.classList.remove("hidden");
+  render();
+}
+
+function showLocked() {
+  wallet = null;
+  elements.walletPanel.classList.add("hidden");
+  elements.lockedPanel.classList.remove("hidden");
+  elements.unlockForm.reset();
+}
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>'"]/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[char]);
+}
+
+function setList(container, items, renderer, emptyText) {
+  container.classList.toggle("empty", items.length === 0);
+  container.innerHTML = items.length ? items.map(renderer).join("") : emptyText;
+}
+
+function renderDerivationResults(rows) {
+  elements.deriveResults.classList.toggle("empty", rows.length === 0);
+  elements.deriveResults.innerHTML = rows.length
+    ? `<table>
+        <thead><tr><th>#</th><th>网络 / 币种</th><th>路径</th><th>地址</th><th>公钥</th><th>私钥</th><th>WIF</th><th>操作</th></tr></thead>
+        <tbody>${rows.map((row) => `<tr>
+          <td>${escapeHtml(row.index)}</td>
+          <td>${escapeHtml(row.name)}</td>
+          <td><code>${escapeHtml(row.path)}</code></td>
+          <td><code>${escapeHtml(row.address)}</code></td>
+          <td><code>${escapeHtml(row.publicKeyHex)}</code></td>
+          <td><code>${escapeHtml(row.privateKeyHex)}</code></td>
+          <td><code>${escapeHtml(row.wif || "—")}</code></td>
+          <td class="row-actions">
+            <button type="button" class="secondary mini" data-sign-key="${escapeHtml(row.privateKeyHex)}" data-sign-mode="${escapeHtml(row.sign)}">签名</button>
+            <button type="button" class="secondary mini" data-import-address="${escapeHtml(row.address)}" data-import-asset="${escapeHtml(row.coin)}" data-import-label="${escapeHtml(row.name)}">加入钱包</button>
+          </td>
+        </tr>`).join("")}</tbody>
+      </table>`
+    : "尚未生成。默认选择 Bitcoin；请从下拉框选择其他货币 / 网络。";
+}
+
+function populateNetworkSelect() {
+  elements.networkSelect.innerHTML = walletCore.NETWORKS
+    .map((network) => `<option value="${escapeHtml(network.id)}">${escapeHtml(network.name)}</option>`)
+    .join("");
+  elements.networkSelect.value = "btc";
+}
+
+function renderSelectors() {
+  const options = wallet.assets
+    .map((asset) => `<option value="${escapeHtml(asset.id)}">${escapeHtml(asset.symbol)} · ${escapeHtml(asset.name)}</option>`)
+    .join("");
+  [$("accountAsset"), $("txAsset")].forEach((select) => {
+    select.innerHTML = options || '<option value="">请先添加资产</option>';
+    select.disabled = !options;
+  });
+}
+
+function assetLabel(assetId) {
+  const asset = wallet.assets.find((item) => item.id === assetId);
+  return asset ? `${asset.symbol} · ${asset.name}` : "未知资产";
+}
+
+function render() {
+  $("walletTitle").textContent = wallet.name;
+  $("assetCount").textContent = wallet.assets.length;
+  $("accountCount").textContent = wallet.accounts.length;
+  $("txCount").textContent = wallet.transactions.length;
+
+  renderSelectors();
+
+  setList(
+    $("assetList"),
+    wallet.assets,
+    (asset) => `<div class="item"><header><strong>${escapeHtml(asset.symbol)}</strong><small>${formatDate(asset.createdAt)}</small></header><p>${escapeHtml(asset.name)}</p><p>${escapeHtml(asset.note)}</p></div>`,
+    "暂无资产",
+  );
+
+  setList(
+    $("accountList"),
+    wallet.accounts,
+    (account) => `<div class="item"><header><strong>${escapeHtml(account.label)}</strong><small>${escapeHtml(assetLabel(account.assetId))}</small></header><p>${escapeHtml(account.address)}</p></div>`,
+    "暂无账户",
+  );
+
+  setList(
+    $("txList"),
+    wallet.transactions,
+    (tx) => `<div class="item"><header><strong>${escapeHtml(tx.direction)} ${escapeHtml(tx.amount)} ${escapeHtml(assetLabel(tx.assetId))}</strong><small>${formatDate(tx.createdAt)}</small></header><p>${escapeHtml(tx.memo)}</p></div>`,
+    "暂无交易备忘",
+  );
+}
+
+function readStoredVault() {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!stored) return null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+}
+
+async function createWallet(event) {
+  event.preventDefault();
+  const password = $("newPassword").value;
+  const confirmed = $("confirmPassword").value;
+
+  if (password.length < 10) {
+    notify("主密码至少需要 10 个字符");
+    return;
+  }
+  if (password !== confirmed) {
+    notify("两次输入的主密码不一致");
+    return;
+  }
+
+  wallet = { ...newWallet($("walletName").value.trim()), password };
+  await saveWallet();
+  elements.createForm.reset();
+  showWallet();
+  notify("钱包已创建并加密保存");
+}
+
+async function unlockWallet(event) {
+  event.preventDefault();
+  const vault = readStoredVault();
+  if (!vault) {
+    notify("本机没有已保存的钱包，请先创建或导入备份");
+    return;
+  }
+
+  try {
+    wallet = { ...(await decryptWallet(vault, $("unlockPassword").value)), password: $("unlockPassword").value };
+    encryptedVault = vault;
+    showWallet();
+    notify("钱包已解锁");
+  } catch {
+    notify("解锁失败：密码错误或数据损坏");
+  }
+}
+
+function addAsset(event) {
+  event.preventDefault();
+  wallet.assets.unshift({
+    id: crypto.randomUUID(),
+    name: $("assetName").value.trim(),
+    symbol: $("assetSymbol").value.trim().toUpperCase(),
+    note: $("assetNote").value.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  elements.assetForm.reset();
+  render();
+  queueSave();
+  notify("资产已保存");
+}
+
+function addAccount(event) {
+  event.preventDefault();
+  wallet.accounts.unshift({
+    id: crypto.randomUUID(),
+    assetId: $("accountAsset").value,
+    label: $("accountLabel").value.trim(),
+    address: $("accountAddress").value.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  elements.accountForm.reset();
+  render();
+  queueSave();
+  notify("账户已保存");
+}
+
+function addTransaction(event) {
+  event.preventDefault();
+  wallet.transactions.unshift({
+    id: crypto.randomUUID(),
+    assetId: $("txAsset").value,
+    amount: $("txAmount").value,
+    direction: $("txDirection").value,
+    memo: $("txMemo").value.trim(),
+    createdAt: new Date().toISOString(),
+  });
+  elements.txForm.reset();
+  render();
+  queueSave();
+  notify("交易备忘已保存");
+}
+
+function exportBackup() {
+  const vault = encryptedVault || readStoredVault();
+  if (!vault) {
+    notify("没有可导出的加密备份");
+    return;
+  }
+
+  const blob = new Blob([JSON.stringify(vault, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `offline-wallet-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+async function importBackup(event) {
+  const [file] = event.target.files;
+  if (!file) return;
+
+  try {
+    const vault = JSON.parse(await file.text());
+    if (!vault?.data || !vault?.salt || !vault?.iv) throw new Error("invalid");
+    persistVault(vault);
+    notify("备份已导入，请使用原主密码解锁");
+  } catch {
+    notify("导入失败：请选择有效的加密备份 JSON");
+  } finally {
+    event.target.value = "";
+  }
+}
+
+async function deriveFromMnemonic(event) {
+  event.preventDefault();
+  const button = elements.deriveForm.querySelector('button[type="submit"]');
+  button.disabled = true;
+  button.textContent = "生成中…";
+  try {
+    const rows = await walletCore.deriveWallets($("mnemonicInput").value, $("mnemonicPassphrase").value, $("accountIndex").value, $("networkSelect").value, 36);
+    renderDerivationResults(rows);
+    notify("已生成所选货币 / 网络的 36 个地址和密钥");
+  } catch (error) {
+    notify(error.message || "派生失败");
+  } finally {
+    button.disabled = false;
+    button.textContent = "生成所选货币的 36 个地址 / 密钥";
+  }
+}
+
+async function signOfflineMessage(event) {
+  event.preventDefault();
+  try {
+    const result = await walletCore.signMessage($("signPrivateKey").value.trim(), $("signMessage").value, $("signMode").value);
+    elements.signatureOutput.textContent = JSON.stringify(result, null, 2);
+    elements.signatureOutput.classList.remove("hidden");
+    notify("签名已生成");
+  } catch (error) {
+    notify(error.message || "签名失败");
+  }
+}
+
+function findOrCreateGeneratedAsset(symbol) {
+  let asset = wallet.assets.find((item) => item.symbol === symbol);
+  if (!asset) {
+    asset = {
+      id: crypto.randomUUID(),
+      name: `${symbol} 派生地址`,
+      symbol,
+      note: "由离线助记词派生工具加入",
+      createdAt: new Date().toISOString(),
+    };
+    wallet.assets.unshift(asset);
+  }
+  return asset;
+}
+
+function handleDerivationAction(event) {
+  const signButton = event.target.closest("[data-sign-key]");
+  if (signButton) {
+    $("signPrivateKey").value = signButton.dataset.signKey;
+    $("signMode").value = signButton.dataset.signMode;
+    $("signMessage").focus();
+    notify("私钥已填入签名表单，请确认离线环境");
+    return;
+  }
+
+  const importButton = event.target.closest("[data-import-address]");
+  if (!importButton) return;
+  if (!wallet) {
+    notify("请先创建或解锁本机钱包，再加入地址");
+    return;
+  }
+
+  const symbol = importButton.dataset.importAsset;
+  const asset = findOrCreateGeneratedAsset(symbol);
+  wallet.accounts.unshift({
+    id: crypto.randomUUID(),
+    assetId: asset.id,
+    label: importButton.dataset.importLabel,
+    address: importButton.dataset.importAddress,
+    createdAt: new Date().toISOString(),
+  });
+  render();
+  queueSave();
+  notify("派生地址已加入本机钱包记录");
+}
+
+function registerServiceWorker() {
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.register("service-worker.js").catch(() => {
+      notify("离线缓存注册失败，但页面仍可作为本地文件使用");
+    });
+  }
+}
+
+function bindEvents() {
+  elements.createForm.addEventListener("submit", createWallet);
+  elements.unlockForm.addEventListener("submit", unlockWallet);
+  elements.assetForm.addEventListener("submit", addAsset);
+  elements.accountForm.addEventListener("submit", addAccount);
+  elements.txForm.addEventListener("submit", addTransaction);
+  elements.exportBtn.addEventListener("click", exportBackup);
+  elements.lockBtn.addEventListener("click", showLocked);
+  elements.importFile.addEventListener("change", importBackup);
+  elements.deriveForm.addEventListener("submit", deriveFromMnemonic);
+  elements.deriveResults.addEventListener("click", handleDerivationAction);
+  elements.signForm.addEventListener("submit", signOfflineMessage);
+  window.addEventListener("online", updateNetworkStatus);
+  window.addEventListener("offline", updateNetworkStatus);
+}
+
+populateNetworkSelect();
+bindEvents();
+updateNetworkStatus();
+// This conflict-free single page is designed to be opened directly as a local file.
+encryptedVault = readStoredVault();
+
+    </script>
+  </body>
+</html>
